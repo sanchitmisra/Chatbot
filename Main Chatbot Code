@@ -1,0 +1,161 @@
+#Develop a Conversational ChatBot using Open AI.
+"""
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+"""#packages"""
+
+!pip install gpt_index
+
+!pip install langchain
+
+"""#Final Snippet for conversational chatbot using Text File"""
+
+# from gpt_index import SimpleDirectoryReader, GPTListIndex,readers, GPTSimpleVectorIndex, LLMPredictor, PromptHelper
+#from types import FunctionType
+import openai
+from langchain import OpenAI
+
+from llama_index import ServiceContext, GPTVectorStoreIndex, LLMPredictor, PromptHelper, SimpleDirectoryReader, load_index_from_storage
+import sys
+import os
+import time
+
+
+os.environ['OPENAI_API_KEY'] = "API"
+openai.api_key = "API" # gpt 3.5 turbo
+from llama_index.node_parser import SimpleNodeParser
+
+from llama_index import StorageContext, load_index_from_storage
+#from langchain.chat_models import ChatOpenAI
+parser = SimpleNodeParser()
+
+
+
+
+def construct_index(directory_path):
+    max_input_size = 1000
+    num_outputs = 1000
+    max_chunk_overlap = 150.
+    chunk_size_limit = 1024
+
+    print("*"*5, "Documents parsing initiated", "*"*5)
+    print('\n')
+    file_metadata = lambda x : {"filename": x}
+    reader = SimpleDirectoryReader(directory_path, file_metadata=file_metadata)
+    documents = reader.load_data()
+
+
+    # nodes = parser.get_nodes_from_documents(documents)
+    # index = GPTVectorStoreIndex(nodes)
+    prompt_helper = PromptHelper(max_input_size, num_outputs, max_chunk_overlap, chunk_size_limit=chunk_size_limit)
+    llm_predictor = LLMPredictor(llm=OpenAI(temperature=0.6, model_name="text-ada-001", max_tokens=num_outputs))
+
+    service_context = ServiceContext.from_defaults(llm_predictor=llm_predictor, prompt_helper=prompt_helper)
+
+    # print("*"*5, "Index creation initiated", "*"*5)
+    index = GPTVectorStoreIndex.from_documents(
+        documents=documents, service_context = service_context
+    )
+    # print("*"*5, "Index created", "*"*5)
+    index.storage_context.persist("/content/drive/MyDrive/Colab Notebooks/Prospect- Sadder law firm_vector")
+    return index
+
+construct_index("/content/drive/MyDrive/Colab Notebooks/Prospect- Sadder law firm")
+storage_context = StorageContext.from_defaults(persist_dir="/content/drive/MyDrive/Colab Notebooks/Prospect- Sadder law firm_vector")
+index = load_index_from_storage(storage_context)
+query_engine = index.as_query_engine()
+'''while True:
+    text_input = input("YOU : ")
+    response = query_engine.query(text_input)
+    print("Bot : ", response)
+    print('\n')'''
+
+!pip install ipywidgets
+
+"""##Without clearing the prevoius output"""
+
+import ipywidgets as widgets
+from IPython.display import display
+
+# Create input and output widgets
+print('You: ')
+prompt_input = widgets.Textarea(value='', placeholder='Write your prompt here', rows=3)
+response_output = widgets.Output()
+
+# Create a button to trigger processing
+submit_button = widgets.Button(description='Submit')
+
+# Function to handle button click event
+def process_input(_):
+    user_prompt = prompt_input.value
+    if user_prompt.strip() == "":
+        with response_output:
+            print("Please enter a prompt.")
+    else:
+        response = query_engine.query(user_prompt)
+        with response_output:
+            print('\n')
+            print("Bot:", response)
+
+# Attach the function to the button's click event
+submit_button.on_click(process_input)
+
+# Create a VBox layout to arrange the widgets vertically
+layout = widgets.VBox([prompt_input, submit_button, response_output])
+
+# Display the layout
+display(layout)
+
+
+
+# Custom CSS for the output area
+output_style = """
+<style>
+#output-area {
+  padding: 20px;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+}
+</style>
+"""
+display(HTML(output_style))
+
+import ipywidgets as widgets
+from IPython.display import display, clear_output
+
+# Create input widgets
+prompt_input = widgets.Textarea(value='', placeholder='Write your prompt here', rows=3)
+
+# Create a button to trigger processing
+submit_button = widgets.Button(description='Submit')
+
+# Create an output area for displaying responses
+output_area = widgets.Output()
+
+# Function to handle button click event
+def process_input(_):
+    user_prompt = prompt_input.value.strip()
+    if user_prompt == "":
+        with output_area:
+            clear_output(wait=True)
+            print("Please enter a prompt.")
+    else:
+        response = query_engine.query(user_prompt)
+        with output_area:
+            clear_output(wait=True)
+            print('\n')
+            print("Bot:", response)
+
+    # Reset prompt input
+    prompt_input.value = ""
+
+# Attach the function to the button's click event
+submit_button.on_click(process_input)
+
+# Display the input widgets
+display(prompt_input, submit_button)
+
+# Display the output area
+display(output_area)
